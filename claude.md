@@ -19,6 +19,7 @@ d. ask
 continue to fix it, and rerun the test command. As long as the command doesn't cost money or possibly dangerous. 
 
 - Try less to ask the user to run tests manually if you can do it. 
+- Try to write elegant code and reuse existing code if possible.
 
 
 - if user ask to approve command : 
@@ -32,7 +33,21 @@ Then claude shouldn't try it and just load update settings skill.
 
 - NEVER overwrite, delete, or replace untracked files (files not in git) without first asking the user. Before any operation that could destroy untracked files (e.g. `git clean`, `git checkout -f`, `git reset --hard` when untracked files would be clobbered, branch recovery, worktree replacement, copying over a directory), run `git status --porcelain` and `git ls-files --others --exclude-standard` to enumerate them. List the untracked files that would be lost to the user and wait for explicit approval before proceeding. This applies even in auto mode.
 - NEVER push commits unless specifically instructed to
+- Authorization is per-instance. When I OK a sensitive action (push, force-push, delete, send, install, publish, run-with-side-effects, etc.), that approval applies ONLY to that specific instance. It is NOT standing permission to do the same thing again later in the session, even if the situation looks identical. Re-ask each time. This also applies to compound commands: `gh repo create --push` is a CREATE plus a PUSH — if I authorized "create the repo", that did not authorize the push; confirm the push separately.
+- Be careful not to commit untracked files. Esp those that you haven't just created (even if they were changed by you in this session). Confirm with the user.. 
+- Generally dont ask the user to do stuff if you can do them for him. That does mean not to confirm with the user.
+- be VERY CAREFUL when overwriting files using system commands like cp / rm (esp those that might contain relevant infromation). Make sure to have a backup, esp when dealing with configuration files. Also, generally don't do it without explicit instructions from the user. 
+- If there are X options on implementation, let me choose. display them, but DONT choose for me (the user). i.e. you typed " Option 2 is the right answer. Let me roll it into the enable/disable path." 
+- I have a big powershell profile at C:\Users\ekarni\Documents\WindowsPowershell\Microsoft.PowerShell_profile.ps1. When I refer to pwsh function, it is usually from there. Most functions are from common.psm1 in the same directory .
 
+
+<!-- BEGIN: claude-allow-denied-hook -->
+### auto-mode denial retry contract
+
+Two custom Claude Code hooks installed from the repo at `C:\gitproj\claude-allow-denied-hook` (`hooks/on-denied.ps1` on `PermissionDenied`, `hooks/on-pretooluse.ps1` on `PreToolUse`) let me override `Denied by auto mode classifier` via a Yes/No desktop dialog. Approving writes the exact `(tool_name, tool_input)` pair to a per-session allowlist at `~/.claude/hooks/session-allows-<session_id>.jsonl`; the PreToolUse hook then auto-allows future calls in this session that match that pair **byte-for-byte**.
+
+When a tool call is denied and Claude Code surfaces `retry: true`, I MUST retry with **identical** `tool_name` and **identical** `tool_input` — no rephrasing the bash command, no edits to `description`, no whitespace tweaks, no swapping `tail -3` for `tail -5`, no adding/removing `2>&1`, nothing. Any change breaks the allowlist match and the classifier denies the retry. If a retry feels wrong to repeat verbatim, do not retry — ask the user instead.
+<!-- END: claude-allow-denied-hook -->
 
 ### python instructions 
 
@@ -140,3 +155,4 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
